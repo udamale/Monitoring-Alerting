@@ -13,21 +13,21 @@ tar -xvf alertmanager-0.27.0.linux-amd64.tar.gz
 cd alertmanager-0.27.0.linux-amd64
 
 echo "[*] Installing Alertmanager binaries..."
-cp alertmanager amtool /usr/local/bin/
-mkdir -p /etc/alertmanager /var/lib/alertmanager
-cp alertmanager.yml /etc/alertmanager/
-chown -R nobody:nogroup /etc/alertmanager /var/lib/alertmanager
+sudo cp alertmanager amtool /usr/local/bin/
+sudo mkdir -p /etc/alertmanager /var/lib/alertmanager
+sudo cp alertmanager.yml /etc/alertmanager/
+sudo chown -R nobody:nogroup /etc/alertmanager /var/lib/alertmanager
 
 echo "[*] Creating systemd service for Alertmanager..."
-cat <<EOF >/etc/systemd/system/alertmanager.service
+sudo tee /etc/systemd/system/alertmanager.service >/dev/null <<'EOF'
 [Unit]
 Description=Alertmanager
 After=network.target
 
 [Service]
 User=nobody
-ExecStart=/usr/local/bin/alertmanager \\
-  --config.file=/etc/alertmanager/alertmanager.yml \\
+ExecStart=/usr/local/bin/alertmanager \
+  --config.file=/etc/alertmanager/alertmanager.yml \
   --storage.path=/var/lib/alertmanager/
 Restart=always
 
@@ -36,7 +36,7 @@ WantedBy=multi-user.target
 EOF
 
 echo "[*] Configuring PagerDuty integration..."
-cat <<EOF >/etc/alertmanager/alertmanager.yml
+sudo tee /etc/alertmanager/alertmanager.yml >/dev/null <<'EOF'
 route:
   receiver: pagerduty
   group_wait: 10s
@@ -50,14 +50,14 @@ receivers:
         severity: "critical"
 EOF
 
-systemctl daemon-reexec
-systemctl enable --now alertmanager
+sudo systemctl daemon-reexec
+sudo systemctl enable --now alertmanager
 
 echo ">>> Alertmanager installed and running on port 9093"
 
 # ============ 2. Install Node Exporter ============
 echo "[*] Creating node_exporter user..."
-useradd --no-create-home --shell /bin/false node_exporter || true
+sudo useradd --no-create-home --shell /bin/false node_exporter || true
 
 echo "[*] Downloading Node Exporter..."
 cd /tmp
@@ -66,11 +66,11 @@ tar -xvf node_exporter-1.8.2.linux-amd64.tar.gz
 cd node_exporter-1.8.2.linux-amd64
 
 echo "[*] Installing Node Exporter binary..."
-cp node_exporter /usr/local/bin/
-chown node_exporter:node_exporter /usr/local/bin/node_exporter
+sudo cp node_exporter /usr/local/bin/
+sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
 
 echo "[*] Creating systemd service for Node Exporter..."
-cat <<EOF >/etc/systemd/system/node_exporter.service
+sudo tee /etc/systemd/system/node_exporter.service >/dev/null <<'EOF'
 [Unit]
 Description=Node Exporter
 Wants=network-online.target
@@ -85,10 +85,11 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reexec
-systemctl enable --now node_exporter
-sudo apt update && apt upgrade -y
+sudo systemctl daemon-reexec
+sudo systemctl enable --now node_exporter
 
+echo "[*] Updating system packages..."
+sudo apt update && sudo apt upgrade -y
 
 echo ">>> Node Exporter installed and running on port 9100"
 
