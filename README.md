@@ -170,8 +170,17 @@ Node Exporter is an open-source tool that exposes a wide variety of hardware- an
 - If ports 9100, 9090, or 3000 are in use, stop the conflicting services or change the ports in the scripts.
 - For persistent monitoring, consider running the scripts in the background or as system services.
 - Grafana default login is `admin`/`admin`. Change the password after first login.
-- You can import community dashboards in Grafana for quick visualization.
+- You can import community dashboards in Grafana for quick visualization.\
+  ## if you want to create custom dashbord just use these queires
+  - For cloudwatch
+    ```
+    SELECT AVG(CPUUtilization) FROM "AWS/EC2"
 
+    ```
+- for promothious
+  ```
+  node_cpu_seconds_total{cpu="1"}
+  ```
 ---
 
 ## License
