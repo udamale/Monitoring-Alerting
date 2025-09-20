@@ -5,17 +5,17 @@ echo " Installing Promethous-grafana-Alertmanager--Node Exporter"
 echo "=============================="
 
 # ============ 1. Update System ============
-sudo apt update && apt upgrade -y
+sudo apt update && sudo apt upgrade -y
 
 # ============ 2. Install Prometheus ============
-sudo useradd --no-create-home --shell /bin/false prometheus
-sudo mkdir /etc/prometheus /var/lib/prometheus
+sudo useradd --no-create-home --shell /bin/false prometheus || true
+sudo mkdir -p /etc/prometheus /var/lib/prometheus
 sudo chown prometheus:prometheus /etc/prometheus /var/lib/prometheus
 
-sudo cd /tmp
-sudo curl -LO https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz
-sudo tar -xvf prometheus-2.55.1.linux-amd64.tar.gz
-sudo cd prometheus-2.55.1.linux-amd64
+cd /tmp
+curl -LO https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz
+tar -xvf prometheus-2.55.1.linux-amd64.tar.gz
+cd prometheus-2.55.1.linux-amd64
 
 sudo cp prometheus promtool /usr/local/bin/
 sudo chown prometheus:prometheus /usr/local/bin/prometheus /usr/local/bin/promtool
@@ -24,7 +24,7 @@ sudo cp -r consoles/ console_libraries/ /etc/prometheus/
 sudo cp prometheus.yml /etc/prometheus/prometheus.yml
 sudo chown -R prometheus:prometheus /etc/prometheus/*
 
-sudo cat <<EOF >/etc/systemd/system/prometheus.service
+sudo tee /etc/systemd/system/prometheus.service >/dev/null <<'EOF'
 [Unit]
 Description=Prometheus
 Wants=network-online.target
@@ -32,10 +32,10 @@ After=network-online.target
 
 [Service]
 User=prometheus
-ExecStart=/usr/local/bin/prometheus \\
-  --config.file=/etc/prometheus/prometheus.yml \\
-  --storage.tsdb.path=/var/lib/prometheus/ \\
-  --web.console.templates=/etc/prometheus/consoles \\
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus/ \
+  --web.console.templates=/etc/prometheus/consoles \
   --web.console.libraries=/etc/prometheus/console_libraries
 Restart=always
 
@@ -49,31 +49,31 @@ sudo systemctl enable --now prometheus
 # ============ 3. Install Grafana ============
 sudo apt-get install -y software-properties-common
 sudo add-apt-repository -y "deb https://packages.grafana.com/oss/deb stable main"
-sudo wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
 sudo apt update
 sudo apt install grafana -y
 sudo systemctl enable --now grafana-server
 
 # ============ 4. Install Alertmanager ============
-sudo cd /tmp
-sudo curl -LO https://github.com/prometheus/alertmanager/releases/download/v0.27.0/alertmanager-0.27.0.linux-amd64.tar.gz
-sudo tar -xvf alertmanager-0.27.0.linux-amd64.tar.gz
-sudo cd alertmanager-0.27.0.linux-amd64
+cd /tmp
+curl -LO https://github.com/prometheus/alertmanager/releases/download/v0.27.0/alertmanager-0.27.0.linux-amd64.tar.gz
+tar -xvf alertmanager-0.27.0.linux-amd64.tar.gz
+cd alertmanager-0.27.0.linux-amd64
 
 sudo cp alertmanager amtool /usr/local/bin/
-sudo mkdir /etc/alertmanager /var/lib/alertmanager
+sudo mkdir -p /etc/alertmanager /var/lib/alertmanager
 sudo cp alertmanager.yml /etc/alertmanager/
 sudo chown -R prometheus:prometheus /etc/alertmanager /var/lib/alertmanager
 
-sudo cat <<EOF >/etc/systemd/system/alertmanager.service
+sudo tee /etc/systemd/system/alertmanager.service >/dev/null <<'EOF'
 [Unit]
 Description=Alertmanager
 After=network.target
 
 [Service]
 User=prometheus
-ExecStart=/usr/local/bin/alertmanager \\
-  --config.file=/etc/alertmanager/alertmanager.yml \\
+ExecStart=/usr/local/bin/alertmanager \
+  --config.file=/etc/alertmanager/alertmanager.yml \
   --storage.path=/var/lib/alertmanager/
 Restart=always
 
@@ -85,7 +85,7 @@ sudo systemctl daemon-reexec
 sudo systemctl enable --now alertmanager
 
 # ============ 5. Configure Prometheus Alerts ============
-sudo cat <<EOF >/etc/prometheus/alert.rules.yml
+sudo tee /etc/prometheus/alert.rules.yml >/dev/null <<'EOF'
 groups:
   - name: example-alerts
     rules:
@@ -95,8 +95,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Instance {{ \$labels.instance }} is down"
-          description: "Prometheus target {{ \$labels.instance }} has been unreachable for more than 1 minute."
+          summary: "Instance {{ $labels.instance }} is down"
+          description: "Prometheus target {{ $labels.instance }} has been unreachable for more than 1 minute."
 
       - alert: HighCPUUsage
         expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 40
@@ -104,8 +104,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "High CPU usage detected on {{ \$labels.instance }}"
-          description: "CPU usage > 40% for more than 2 minutes. VALUE = {{ \$value }}%"
+          summary: "High CPU usage detected on {{ $labels.instance }}"
+          description: "CPU usage > 40% for more than 2 minutes. VALUE = {{ $value }}%"
 
       - alert: UnauthorizedRequests
         expr: increase(http_requests_total{status=~"401|403"}[5m]) > 0
@@ -113,18 +113,12 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Unauthorized requests on {{ \$labels.instance }}"
+          summary: "Unauthorized requests on {{ $labels.instance }}"
           description: "Detected unauthorized (401/403) requests in the past 5 minutes."
 EOF
 
-# Link rules into Prometheus config
-#sed -i '/^global:/a \
-#rule_files:\n  - "alert.rules.yml"\n' /etc/prometheus/prometheus.yml
-
-#systemctl restart prometheus
-
 # ============ 6. PagerDuty Integration ============
-sudo cat <<EOF >/etc/alertmanager/alertmanager.yml
+sudo tee /etc/alertmanager/alertmanager.yml >/dev/null <<'EOF'
 route:
   receiver: pagerduty
   group_wait: 10s
@@ -141,15 +135,15 @@ EOF
 sudo systemctl restart alertmanager
 
 # ============ 7. Install Node Exporter ============
-sudo useradd --no-create-home --shell /bin/false node_exporter
-sudo cd /tmp
-sudo curl -LO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
-sudo tar -xvf node_exporter-1.8.2.linux-amd64.tar.gz
-sudo cd node_exporter-1.8.2.linux-amd64
+sudo useradd --no-create-home --shell /bin/false node_exporter || true
+cd /tmp
+curl -LO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+tar -xvf node_exporter-1.8.2.linux-amd64.tar.gz
+cd node_exporter-1.8.2.linux-amd64
 sudo cp node_exporter /usr/local/bin/
 sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
 
-sudo cat <<EOF >/etc/systemd/system/node_exporter.service
+sudo tee /etc/systemd/system/node_exporter.service >/dev/null <<'EOF'
 [Unit]
 Description=Node Exporter
 Wants=network-online.target
@@ -167,8 +161,8 @@ EOF
 sudo systemctl daemon-reexec
 sudo systemctl enable --now node_exporter
 
-# ============ 8. Add Node Exporter to Prometheus ============
-sudo cat <<'EOF' >/etc/prometheus/prometheus.yml
+# ============ 8. Prometheus Config ============
+sudo tee /etc/prometheus/prometheus.yml >/dev/null <<'EOF'
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -177,26 +171,20 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets: ["localhost:9093"]
-    # EC2-discovered Alertmanagers
     - ec2_sd_configs:
-        - region: us-east-1           # Replace with your AWS region
+        - region: us-east-1
           port: 9093
           filters:
-           # - name: "tag:Role"
-            #  values: ["alertmanager"]
             - name: "tag:Name"
-              values: ["node-server"]        # optional: only pick prod Alertmanagers
+              values: ["node-server"]
       relabel_configs:
         - source_labels: [__meta_ec2_private_ip]
           regex: (.*)
           target_label: __address__
           replacement: "$1:9093"
 
-    # Local fallback Alertmanager
-    
 rule_files:
   - "alert.rules.yml"
-  # - "second_rules.yml"
 
 scrape_configs:
   - job_name: "prometheus"
@@ -205,7 +193,7 @@ scrape_configs:
 
   - job_name: "ec2-node-exporters"
     ec2_sd_configs:
-      - region: us-east-1           # Replace with your AWS region
+      - region: us-east-1
         port: 9100
         filters:
           - name: "tag:Name"
@@ -218,7 +206,10 @@ scrape_configs:
 EOF
 
 sudo systemctl restart prometheus
-sudo apt update && apt upgrade -y
+
+# Final system update
+sudo apt update && sudo apt upgrade -y
+
 
 echo "=============================="
 echo " Installation Completed ✅"
