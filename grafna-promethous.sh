@@ -1,27 +1,30 @@
 #!/bin/bash
 set -e
+echo "=============================="
+echo " Installing Promethous-grafana-Alertmanager--Node Exporter"
+echo "=============================="
 
 # ============ 1. Update System ============
 sudo apt update && apt upgrade -y
 
 # ============ 2. Install Prometheus ============
-useradd --no-create-home --shell /bin/false prometheus
-mkdir /etc/prometheus /var/lib/prometheus
-chown prometheus:prometheus /etc/prometheus /var/lib/prometheus
+sudo useradd --no-create-home --shell /bin/false prometheus
+sudo mkdir /etc/prometheus /var/lib/prometheus
+sudo chown prometheus:prometheus /etc/prometheus /var/lib/prometheus
 
-cd /tmp
-curl -LO https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz
-tar -xvf prometheus-2.55.1.linux-amd64.tar.gz
-cd prometheus-2.55.1.linux-amd64
+sudo cd /tmp
+sudo curl -LO https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz
+sudo tar -xvf prometheus-2.55.1.linux-amd64.tar.gz
+sudo cd prometheus-2.55.1.linux-amd64
 
-cp prometheus promtool /usr/local/bin/
-chown prometheus:prometheus /usr/local/bin/prometheus /usr/local/bin/promtool
+sudo cp prometheus promtool /usr/local/bin/
+sudo chown prometheus:prometheus /usr/local/bin/prometheus /usr/local/bin/promtool
 
-cp -r consoles/ console_libraries/ /etc/prometheus/
-cp prometheus.yml /etc/prometheus/prometheus.yml
-chown -R prometheus:prometheus /etc/prometheus/*
+sudo cp -r consoles/ console_libraries/ /etc/prometheus/
+sudo cp prometheus.yml /etc/prometheus/prometheus.yml
+sudo chown -R prometheus:prometheus /etc/prometheus/*
 
-cat <<EOF >/etc/systemd/system/prometheus.service
+sudo cat <<EOF >/etc/systemd/system/prometheus.service
 [Unit]
 Description=Prometheus
 Wants=network-online.target
@@ -40,29 +43,29 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reexec
-systemctl enable --now prometheus
+sudo systemctl daemon-reexec
+sudo systemctl enable --now prometheus
 
 # ============ 3. Install Grafana ============
-apt-get install -y software-properties-common
-add-apt-repository -y "deb https://packages.grafana.com/oss/deb stable main"
-wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
-apt update
-apt install grafana -y
-systemctl enable --now grafana-server
+sudo apt-get install -y software-properties-common
+sudo add-apt-repository -y "deb https://packages.grafana.com/oss/deb stable main"
+sudo wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
+sudo apt update
+sudo apt install grafana -y
+sudo systemctl enable --now grafana-server
 
 # ============ 4. Install Alertmanager ============
-cd /tmp
-curl -LO https://github.com/prometheus/alertmanager/releases/download/v0.27.0/alertmanager-0.27.0.linux-amd64.tar.gz
-tar -xvf alertmanager-0.27.0.linux-amd64.tar.gz
-cd alertmanager-0.27.0.linux-amd64
+sudo cd /tmp
+sudo curl -LO https://github.com/prometheus/alertmanager/releases/download/v0.27.0/alertmanager-0.27.0.linux-amd64.tar.gz
+sudo tar -xvf alertmanager-0.27.0.linux-amd64.tar.gz
+sudo cd alertmanager-0.27.0.linux-amd64
 
-cp alertmanager amtool /usr/local/bin/
-mkdir /etc/alertmanager /var/lib/alertmanager
-cp alertmanager.yml /etc/alertmanager/
-chown -R prometheus:prometheus /etc/alertmanager /var/lib/alertmanager
+sudo cp alertmanager amtool /usr/local/bin/
+sudo mkdir /etc/alertmanager /var/lib/alertmanager
+sudo cp alertmanager.yml /etc/alertmanager/
+sudo chown -R prometheus:prometheus /etc/alertmanager /var/lib/alertmanager
 
-cat <<EOF >/etc/systemd/system/alertmanager.service
+sudo cat <<EOF >/etc/systemd/system/alertmanager.service
 [Unit]
 Description=Alertmanager
 After=network.target
@@ -78,11 +81,11 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reexec
-systemctl enable --now alertmanager
+sudo systemctl daemon-reexec
+sudo systemctl enable --now alertmanager
 
 # ============ 5. Configure Prometheus Alerts ============
-cat <<EOF >/etc/prometheus/alert.rules.yml
+sudo cat <<EOF >/etc/prometheus/alert.rules.yml
 groups:
   - name: example-alerts
     rules:
@@ -121,7 +124,7 @@ EOF
 #systemctl restart prometheus
 
 # ============ 6. PagerDuty Integration ============
-cat <<EOF >/etc/alertmanager/alertmanager.yml
+sudo cat <<EOF >/etc/alertmanager/alertmanager.yml
 route:
   receiver: pagerduty
   group_wait: 10s
@@ -135,18 +138,18 @@ receivers:
         severity: "critical"
 EOF
 
-systemctl restart alertmanager
+sudo systemctl restart alertmanager
 
 # ============ 7. Install Node Exporter ============
-useradd --no-create-home --shell /bin/false node_exporter
-cd /tmp
-curl -LO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
-tar -xvf node_exporter-1.8.2.linux-amd64.tar.gz
-cd node_exporter-1.8.2.linux-amd64
-cp node_exporter /usr/local/bin/
-chown node_exporter:node_exporter /usr/local/bin/node_exporter
+sudo useradd --no-create-home --shell /bin/false node_exporter
+sudo cd /tmp
+sudo curl -LO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+sudo tar -xvf node_exporter-1.8.2.linux-amd64.tar.gz
+sudo cd node_exporter-1.8.2.linux-amd64
+sudo cp node_exporter /usr/local/bin/
+sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
 
-cat <<EOF >/etc/systemd/system/node_exporter.service
+sudo cat <<EOF >/etc/systemd/system/node_exporter.service
 [Unit]
 Description=Node Exporter
 Wants=network-online.target
@@ -161,11 +164,11 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reexec
-systemctl enable --now node_exporter
+sudo systemctl daemon-reexec
+sudo systemctl enable --now node_exporter
 
 # ============ 8. Add Node Exporter to Prometheus ============
-cat <<'EOF' >/etc/prometheus/prometheus.yml
+sudo cat <<'EOF' >/etc/prometheus/prometheus.yml
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -216,4 +219,8 @@ EOF
 
 sudo systemctl restart prometheus
 sudo apt update && apt upgrade -y
+
+echo "=============================="
+echo " Installation Completed ✅"
+echo "=============================="
 
