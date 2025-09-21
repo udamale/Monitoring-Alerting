@@ -175,18 +175,17 @@ Node Exporter is an open-source tool that exposes a wide variety of hardware- an
   ```
   sudo apt-get install stress-ng -y   # Ubuntu/Debian
   stress-ng --cpu 2 --timeout 300
-```
+`
   ## if you want to create custom dashbord just use these queires
   - For cloudwatch
     ```
     SELECT AVG(CPUUtilization) FROM "AWS/EC2"
-
     ```
-- for promothious
+
+###  for promothious
   ```
   node_cpu_seconds_total{cpu="1"}
   ```
----
 
 ## License
 
