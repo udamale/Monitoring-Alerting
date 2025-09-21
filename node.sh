@@ -35,21 +35,6 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-echo "[*] Configuring PagerDuty integration..."
-sudo tee /etc/alertmanager/alertmanager.yml >/dev/null <<'EOF'
-route:
-  receiver: pagerduty
-  group_wait: 10s
-  group_interval: 10s
-  repeat_interval: 1h
-
-receivers:
-  - name: pagerduty
-    pagerduty_configs:
-      - routing_key: "bf372ec1ad114502d005323502fb0ed6"
-        severity: "critical"
-EOF
-
 sudo systemctl daemon-reexec
 sudo systemctl enable --now alertmanager
 
